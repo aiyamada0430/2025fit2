@@ -1,58 +1,136 @@
 import pyxel
+import random
 
-pyxel.init(200, 200)
-pyxel.sound(0).set(notes='A2C3', tones='TT', volumes='33', effects='NN', speed=10)
-pyxel.sound(1).set(notes='C2', tones='N', volumes='3', effects='S', speed=30)
+# ===== 定数 =====
+BLOCK = 8
+COLS = 10
+ROWS = 18
+WIDTH = COLS * BLOCK
+HEIGHT = ROWS * BLOCK
 
-balls = []
-for i in range(3):
-    angle = pyxel.rndi(30, 150)
-    balls.append({
-        "x": pyxel.rndi(0, 199),
-        "y": 0,
-        "vx": pyxel.cos(angle),
-        "vy": pyxel.sin(angle),
-        "speed": 1
-    })
+pyxel.init(WIDTH, HEIGHT, title="テトリス風")
 
-padx = 100
-score = 0
+# ===== テトリミノ定義 =====
+SHAPES = [
+    [[1, 1, 1, 1]],            # I
+    [[1, 1],
+     [1, 1]],                  # O
+    [[1, 0],
+     [1, 0],
+     [1, 1]],                  # L
+    [[1, 1, 0],
+     [0, 1, 1]]                # Z
+]
 
-def reset_ball(ball):
-    angle = pyxel.rndi(30, 150)
-    ball["x"] = pyxel.rndi(0, 199)
-    ball["y"] = 0
-    ball["vx"] = pyxel.cos(angle)
-    ball["vy"] = pyxel.sin(angle)
-    ball["speed"] += 1
+COLORS = [8, 9, 10, 11, 12]
+
+# ===== 盤面 =====
+field = [[0 for _ in range(COLS)] for _ in range(ROWS)]
+
+# ===== 落下ブロック =====
+shape = None
+color = 0
+bx = 0
+by = 0
+drop_timer = 0
+
+def new_block():
+    global shape, color, bx, by
+    shape = random.choice(SHAPES)
+    color = random.choice(COLORS)
+    bx = COLS // 2 - len(shape[0]) // 2
+    by = 0
+
+def can_move(nx, ny, s):
+    for y in range(len(s)):
+        for x in range(len(s[0])):
+            if s[y][x]:
+                fx = nx + x
+                fy = ny + y
+                if fx < 0 or fx >= COLS or fy >= ROWS:
+                    return False
+                if fy >= 0 and field[fy][fx]:
+                    return False
+    return True
+
+def rotate(s):
+    return list(zip(*s[::-1]))
+
+def fix_block():
+    for y in range(len(shape)):
+        for x in range(len(shape[0])):
+            if shape[y][x]:
+                field[by + y][bx + x] = color
+    clear_lines()
+    new_block()
+
+def clear_lines():
+    global field
+    new_field = []
+    for row in field:
+        if 0 not in row:
+            continue
+        new_field.append(row)
+    while len(new_field) < ROWS:
+        new_field.insert(0, [0] * COLS)
+    field = new_field
 
 def update():
-    global padx, score
-    padx = pyxel.mouse_x
+    global bx, by, drop_timer, shape
 
-    for ball in balls:
-        ball["x"] += ball["vx"] * ball["speed"]
-        ball["y"] += ball["vy"] * ball["speed"]
+    # 左右移動
+    if pyxel.btnp(pyxel.KEY_LEFT):
+        if can_move(bx - 1, by, shape):
+            bx -= 1
+    if pyxel.btnp(pyxel.KEY_RIGHT):
+        if can_move(bx + 1, by, shape):
+            bx += 1
 
- 
-        if (ball["x"] < 0) or (ball["x"] >= 200):
-            ball["vx"] = -ball["vx"]
+    # 回転
+    if pyxel.btnp(pyxel.KEY_UP):
+        r = rotate(shape)
+        if can_move(bx, by, r):
+            shape = r
 
-     
-        if ball["y"] >= 200:
-            pyxel.play(0, 1)
-            reset_ball(ball)
+    # 落下
+    drop_timer += 1
+    speed = 15
+    if pyxel.btn(pyxel.KEY_DOWN):
+        speed = 3
 
-        if ball["y"] >= 195 and (padx - 20 <= ball["x"] <= padx + 20):
-            pyxel.play(0, 0)
-            score += 1
-            reset_ball(ball)
+    if drop_timer >= speed:
+        if can_move(bx, by + 1, shape):
+            by += 1
+        else:
+            fix_block()
+        drop_timer = 0
 
 def draw():
-    pyxel.cls(7)
-    for ball in balls:
-        pyxel.circ(ball["x"], ball["y"], 10, 6)
-    pyxel.rect(padx - 20, 195, 40, 5, 14)
-    pyxel.text(5, 5, "score: " + str(score), 0)
+    pyxel.cls(0)
 
+    # 盤面
+    for y in range(ROWS):
+        for x in range(COLS):
+            if field[y][x]:
+                pyxel.rect(
+                    x * BLOCK,
+                    y * BLOCK,
+                    BLOCK,
+                    BLOCK,
+                    field[y][x]
+                )
+
+    # 落下中ブロック
+    for y in range(len(shape)):
+        for x in range(len(shape[0])):
+            if shape[y][x]:
+                pyxel.rect(
+                    (bx + x) * BLOCK,
+                    (by + y) * BLOCK,
+                    BLOCK,
+                    BLOCK,
+                    color
+                )
+
+new_block()
 pyxel.run(update, draw)
