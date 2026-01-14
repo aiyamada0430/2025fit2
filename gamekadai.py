@@ -1,7 +1,6 @@
 import pyxel
 import random
 
-# ===== 定数 =====
 BLOCK = 8
 COLS = 10
 ROWS = 18
@@ -10,24 +9,21 @@ HEIGHT = ROWS * BLOCK
 
 pyxel.init(WIDTH, HEIGHT, title="テトリス風")
 
-# ===== テトリミノ定義 =====
 SHAPES = [
-    [[1, 1, 1, 1]],              # I
+    [[1, 1, 1, 1]],
     [[1, 1],
-     [1, 1]],                    # O
+     [1, 1]],
     [[1, 0],
      [1, 0],
-     [1, 1]],                    # L
+     [1, 1]],
     [[1, 1, 0],
-     [0, 1, 1]]                  # Z
+     [0, 1, 1]]
 ]
 
 COLORS = [8, 9, 10, 11, 12]
 
-# ===== 盤面 =====
 field = [[0 for _ in range(COLS)] for _ in range(ROWS)]
 
-# ===== 状態 =====
 shape = None
 color = 0
 bx = 0
@@ -42,7 +38,7 @@ def new_block():
     color = random.choice(COLORS)
     bx = COLS // 2 - len(shape[0]) // 2
     by = 0
-    # 出た瞬間に置けなければゲームオーバー
+
     if not can_move(bx, by, shape):
         game_over = True
 
@@ -81,26 +77,23 @@ def clear_lines():
     while len(new_field) < ROWS:
         new_field.insert(0, [0] * COLS)
     field = new_field
-    score += cleared   # 1段消えるごとに1点
+    score += cleared
 
 def update():
     global bx, by, drop_timer, shape
     if game_over:
         return
 
-    # 左右移動
     if pyxel.btnp(pyxel.KEY_LEFT) and can_move(bx - 1, by, shape):
         bx -= 1
     if pyxel.btnp(pyxel.KEY_RIGHT) and can_move(bx + 1, by, shape):
         bx += 1
 
-    # 回転
     if pyxel.btnp(pyxel.KEY_UP):
         r = rotate(shape)
         if can_move(bx, by, r):
             shape = r
 
-    # 落下
     drop_timer += 1
     speed = 15
     if pyxel.btn(pyxel.KEY_DOWN):
@@ -116,7 +109,6 @@ def update():
 def draw():
     pyxel.cls(0)
 
-    # 盤面
     for y in range(ROWS):
         for x in range(COLS):
             if field[y][x]:
@@ -128,7 +120,7 @@ def draw():
                     field[y][x]
                 )
 
-    # 落下中ブロック
+
     if not game_over:
         for y in range(len(shape)):
             for x in range(len(shape[0])):
@@ -141,10 +133,8 @@ def draw():
                         color
                     )
 
-    # スコア表示
     pyxel.text(2, 2, f"SCORE: {score}", 7)
 
-    # ゲームオーバー表示
     if game_over:
         pyxel.text(WIDTH // 2 - 28, HEIGHT // 2 - 4, "GAME OVER", 8)
 
